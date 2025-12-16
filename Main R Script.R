@@ -241,7 +241,8 @@ gg_richness_severity_final <- gg_richness_severity +
 
 gg_richness_severity_final
 
-ggsave(filename = "plot_richness_severity.png", gg_richness_severity_final, height=6, width=10)
+ggsave(filename = "Alpha_and_Beta_Diversity_Plots/plot_richness_severity.png",
+       gg_richness_severity_final, height=6, width=10)
 
 estimate_richness(covid_mexico_phyloseq_rare)
 
@@ -362,7 +363,8 @@ plot_pd_severity_final <- ggplot(df_pd, aes(x = sex, y = PD)) +
 
 plot_pd_severity_final
 
-ggsave("plot_pd_severity.png", plot_pd_severity_final, height = 6, width = 10)
+ggsave(filename = "Alpha_and_Beta_Diversity_Plots/plot_pd_severity.png",
+       plot_pd_severity_final, height = 6, width = 10)
 
 #### Beta diversity #####
 # 1) Distance matrix
@@ -507,4 +509,5 @@ gg_pcoa_final <- gg_pcoa +
 
 gg_pcoa_final
 
-ggsave("plot_pcoa.png", gg_pcoa_final, height=7, width=11)
+ggsave(filename = "Alpha_and_Beta_Diversity_Plots/plot_pcoa.png",
+       gg_pcoa_final, height=7, width=11)
