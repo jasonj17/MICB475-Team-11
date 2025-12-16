@@ -1,0 +1,24 @@
+# QIIME2 PiCRUSt2 Pipeline
+qiime feature-table filter-features \
+  --i-table mexico-table-no-mitochondria-no-chloroplast.qza \
+  --p-min-frequency 5 \
+  --o-filtered-table mexico-feature-frequency-filtered-table.qza
+
+mkdir -p picrust_mexico
+
+qiime tools export \
+  --input-path mexico-feature-frequency-filtered-table.qza \
+  --output-path picrust_mexico
+
+qiime tools export \
+  --input-path mexico-rep-seqs.qza \
+  --output-path picrust_mexico
+
+conda deactivate
+conda activate picrust2
+
+picrust2_pipeline.py \
+  -s picrust_mexico/dna-sequences.fasta \
+  -i picrust_mexico/feature-table.biom \
+  -o picrust_mexico_out \
+  -p 4

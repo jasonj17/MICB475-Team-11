@@ -1,0 +1,149 @@
+# Demux Mexico
+qiime tools import \
+  --type "SampleData[PairedEndSequencesWithQuality]" \
+  --input-format PairedEndFastqManifestPhred33V2 \
+  --input-path /datasets/project_2/COVID/Mexico/covid_mex_manifest.txt \
+  --output-path ./demux_seqs.qza
+
+# Create visualization of demultiplexed samples
+qiime demux summarize \
+  --i-data demux_seqs.qza \
+  --o-visualization demux.qzv
+
+# Determine ASVs with DADA2
+qiime dada2 denoise-single \
+  --i-demultiplexed-seqs demux_seqs.qza \
+  --p-trim-left 0 \
+  --p-trunc-len 245 \
+  --o-representative-sequences rep-seqs.qza \
+  --o-table table.qza \
+  --o-denoising-stats stats.qza
+
+# Visualize ASVs stats
+qiime feature-table summarize \
+  --i-table table.qza \
+  --o-visualization table.qzv \
+  --m-sample-metadata-file covid_mex_metadata_edited.tsv
+
+qiime feature-table tabulate-seqs \
+  --i-data rep-seqs.qza \
+  --o-visualization rep-seqs.qzv
+
+qiime metadata tabulate \
+  --m-input-file stats.qza \
+  --o-visualization stats.qzv
+
+#replace primer sequences with correct sequences
+#replace trunc-len with the one you defined in denoising step
+qiime feature-classifier extract-reads \
+  --i-sequences /datasets/classifiers/silva_ref_files/silva-138-99-seqs.qza \
+  --p-f-primer CCTACGGGAGGCAGCAG \
+  --p-r-primer ATTACCGCGGCTGCTGG \
+  --p-trunc-len 245 \
+  --o-reads ref-seqs-trimmed.qza
+
+# Train classifier with new ref-seq file
+qiime feature-classifier fit-classifier-naive-bayes \
+  --i-reference-reads ref-seqs-trimmed.qza \
+  --i-reference-taxonomy /datasets/classifiers/silva_ref_files/silva-138-99-tax.qza \
+  --o-classifier classifier.qza
+
+# Use the trained classifier to assign taxonomy to reads (rep-seqs.qza)
+qiime feature-classifier classify-sklearn \
+  --i-classifier /data/COVID/Mexico_Final/trained_classifier/classifier.qza \
+  --i-reads rep-seqs.qza \
+  --o-classification taxonomy.qza
+
+qiime metadata tabulate \
+  --m-input-file taxonomy.qza \
+  --o-visualization taxonomy.qzv
+
+# Taxonomy barplots (Mexico)
+qiime taxa barplot \
+  --i-table table.qza \
+  --i-taxonomy taxonomy.qza \
+  --m-metadata-file covid_mex_metadata_edited.tsv \
+  --o-visualization taxa-bar-plots.qzv
+
+# Filtering (Mexico)
+qiime taxa filter-table \
+  --i-table table.qza \
+  --i-taxonomy taxonomy.qza \
+  --p-exclude mitochondria,chloroplast \
+  --o-filtered-table table-no-mitochondria-no-chloroplast.qza
+
+qiime feature-table summarize \
+  --i-table table-no-mitochondria-no-chloroplast.qza \
+  --o-visualization table-no-mitochondria-no-chloroplast.qzv \
+  --m-sample-metadata-file covid_mex_metadata_edited.tsv
+
+# Generate a tree for phylogenetic diversity analyses
+qiime phylogeny align-to-tree-mafft-fasttree \
+  --i-sequences rep-seqs.qza \
+  --o-alignment aligned-rep-seqs.qza \
+  --o-masked-alignment masked-aligned-rep-seqs.qza \
+  --o-tree unrooted-tree.qza \
+  --o-rooted-tree rooted-tree.qza
+
+# Alpha-rarefaction (MEXICO)
+qiime diversity alpha-rarefaction \
+  --i-table table.qza \
+  --i-phylogeny rooted-tree.qza \
+  --p-max-depth 304000 \
+  --m-metadata-file covid_mex_metadata_edited.tsv \
+  --o-visualization alpha-rarefaction.qzv
+
+# Calculate alpha- and beta-diversity metrics (set min. 10 samples per category)
+qiime diversity core-metrics-phylogenetic \
+  --i-phylogeny rooted-tree.qza \
+  --i-table table-no-mitochondria-no-chloroplast.qza \
+  --p-sampling-depth 48792 \
+  --m-metadata-file covid_mex_metadata_edited.tsv \
+  --output-dir core-metrics-results
+
+# Retained 10,099,944 (48.11%) features in 207 (73.40%) samples at the specifed sampling depth.
+
+# Calculate alpha-group-significance
+qiime diversity alpha-group-significance \
+  --i-alpha-diversity core-metrics-results/faith_pd_vector.qza \
+  --m-metadata-file covid_mex_metadata_edited.tsv \
+  --o-visualization core-metrics-results/faith-pd-group-significance.qzv
+
+qiime diversity alpha-group-significance \
+  --i-alpha-diversity core-metrics-results/evenness_vector.qza \
+  --m-metadata-file covid_mex_metadata_edited.tsv \
+  --o-visualization core-metrics-results/evenness-group-significance.qzv
+
+# Calculate beta-group-significance
+qiime diversity beta-group-significance \
+  --i-distance-matrix core-metrics-results/unweighted_unifrac_distance_matrix.qza \
+  --m-metadata-file covid_mex_metadata_edited.tsv \
+  --m-metadata-column sex \
+  --o-visualization core-metrics-results/unweighted-unifrac-sex-significance.qzv \
+  --p-pairwise
+
+qiime diversity beta-group-significance \
+  --i-distance-matrix core-metrics-results/unweighted_unifrac_distance_matrix.qza \
+  --m-metadata-file covid_mex_metadata_edited.tsv \
+  --m-metadata-column Group \
+  --o-visualization core-metrics-results/unweighted-unifrac-group-significance.qzv \
+  --p-pairwise
+
+# Exporting .qza file (MEXICO)
+qiime tools export \
+  --input-path ../COVID/Mexico_Final_Updated/table.qza \
+  --output-path table_export
+
+qiime tools export \
+  --input-path ../COVID/Mexico_Final_Updated/rooted-tree.qza \
+  --output-path rooted_tree_export
+
+qiime tools export \
+  --input-path ../COVID/Mexico_Final_Updated/taxonomy.qza \
+  --output-path taxonomy_export
+
+# Exporting biom file into text file
+biom convert -i feature-table.biom --to-tsv -o feature-table.txt
+
+# To secure copy a whole directory onto personal computer
+scp -r root@10.19.139.161:/data/covid_mexico_final_updated_export .
