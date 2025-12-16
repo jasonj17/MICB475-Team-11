@@ -380,7 +380,7 @@ log_stacked_plot <- ggplot(plot_data_abs, aes(
   scale_fill_manual(values = palette) +
   theme_minimal() +
   labs(
-    title = "Absolute Abundance of Significant (Log10 Stack)",
+    title = "Normalized Counts of Significant (Log10 Stack)",
     x = "Sex–Severity Group",
     # Y-axis label reflects the transformation
     y = "Mean Absolute Abundance (Log10(Counts + 1))",
@@ -399,4 +399,5 @@ log_stacked_plot <- ggplot(plot_data_abs, aes(
 
 
 print(log_stacked_plot)
-ggsave("ISA_and_DESeq2_Plots/stacked_genus_log10_absolute_abundance.png", log_stacked_plot, width = 12, height = 9, dpi = 300)
+ggsave("ISA_and_DESeq2_Plots/stacked_genus_log10_normalized_counts.png", log_stacked_plot, width = 12, height = 9, dpi = 300)
+
